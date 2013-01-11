@@ -9,6 +9,7 @@
 #include <sys/uio.h>
 #include <unistd.h>
 #include "picoev.h"
+#include "sandbox.h"
 
 #define HOST 0 /* 0x7f000001 for localhost */
 #define PORT 23456
@@ -120,6 +121,11 @@ main(void)
   loop = picoev_create_loop(60);
   /* add listen socket */
   picoev_add(loop, listen_sock, PICOEV_READ, 0, accept_callback, NULL);
+
+  /* Seccomp sandbox setup */
+  sandbox_init();
+  sandbox_setup();
+  sandbox_lockdown();
 
   /* loop */
   while (1)

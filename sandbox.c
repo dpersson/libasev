@@ -287,6 +287,9 @@ sandbox_init()
 void
 sandbox_setup()
 {
+  sandbox_setup_base();
+  sandbox_setup_data_connections();
+
   return;
 }
 
