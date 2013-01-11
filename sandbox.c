@@ -1,6 +1,5 @@
 #include "sandbox.h"
 
-#include "session.h"
 #include "sysutil.h"
 #include "utility.h"
 
@@ -238,20 +237,16 @@ sandbox_setup_data_connections()
                        3, IPPROTO_TCP);
   allow_nr(__NR_bind);
   allow_nr(__NR_select);
-  if (tunable_port_enable)
-  {
-    allow_nr(__NR_connect);
-    allow_nr_2_arg_match(__NR_getsockopt, 2, SOL_SOCKET, 3, SO_ERROR);
-    allow_nr_2_arg_match(__NR_setsockopt, 2, SOL_SOCKET, 3, SO_REUSEADDR);
-    allow_nr_1_arg_match(__NR_fcntl, 2, F_GETFL);
-    allow_nr_2_arg_match(__NR_fcntl, 2, F_SETFL, 3, O_RDWR|O_NONBLOCK);
-    allow_nr_2_arg_match(__NR_fcntl, 2, F_SETFL, 3, O_RDWR);
-  }
-  if (tunable_pasv_enable)
-  {
-    allow_nr(__NR_listen);
-    allow_nr(__NR_accept);
-  }
+
+  allow_nr(__NR_connect);
+  allow_nr_2_arg_match(__NR_getsockopt, 2, SOL_SOCKET, 3, SO_ERROR);
+  allow_nr_2_arg_match(__NR_setsockopt, 2, SOL_SOCKET, 3, SO_REUSEADDR);
+  allow_nr_1_arg_match(__NR_fcntl, 2, F_GETFL);
+  allow_nr_2_arg_match(__NR_fcntl, 2, F_SETFL, 3, O_RDWR|O_NONBLOCK);
+  allow_nr_2_arg_match(__NR_fcntl, 2, F_SETFL, 3, O_RDWR);
+
+  allow_nr(__NR_listen);
+  allow_nr(__NR_accept);
 }
 
 static void
@@ -290,155 +285,9 @@ sandbox_init()
 }
 
 void
-sandbox_setup_postlogin(const struct vsf_session* p_sess)
+sandbox_setup()
 {
-  int is_anon = p_sess->is_anonymous;
-  int open_flag = kOpenFlags;
-  if (tunable_write_enable)
-  {
-    open_flag |= O_ACCMODE;
-  }
-
-  /* Put lstat() first because it is a very hot syscall for large directory
-   * listings. And the current BPF only allows a linear scan of allowed
-   * syscalls.
-   */
-  allow_nr(__NR_lstat);
-
-  /* Allow all the simple pre-login things and then expand upon them. */
-  sandbox_setup_base();
-
-  /* Peeking FTP commands from the network. */
-  allow_nr_1_arg_match(__NR_recvfrom, 4, MSG_PEEK);
-
-  /* Misc simple low-risk calls */
-  allow_nr(__NR_nanosleep); /* Used for bandwidth / login throttling. */
-  allow_nr(__NR_getpid); /* Used by logging. */
-  allow_nr(__NR_shutdown); /* Used for QUIT or a timeout. */
-  allow_nr_1_arg_match(__NR_fcntl, 2, F_GETFL);
-  /* It's safe to allow O_RDWR in fcntl because these flags cannot be changed.
-   * Also, sockets are O_RDWR.
-   */
-  allow_nr_2_arg_mask_match(__NR_fcntl, 3, kOpenFlags|O_ACCMODE, 2, F_SETFL);
-
-  /* Config-dependent items follow. */
-  if (tunable_idle_session_timeout > 0)
-  {
-    allow_nr(__NR_rt_sigaction);
-    allow_nr(__NR_alarm);
-  }
-  if (tunable_xferlog_enable || tunable_dual_log_enable)
-  {
-    /* For file locking. */
-    allow_nr_1_arg_match(__NR_fcntl, 2, F_SETLKW);
-    allow_nr_1_arg_match(__NR_fcntl, 2, F_SETLK);
-  }
-  if (tunable_ssl_enable)
-  {
-    allow_nr_1_arg_match(__NR_recvmsg, 3, 0);
-  }
-
-  /* Simple file descriptor-based operations. */
-  if (tunable_xferlog_enable || tunable_dual_log_enable ||
-      tunable_lock_upload_files)
-  {
-    allow_nr_1_arg_match(__NR_fcntl, 2, F_SETLKW);
-    allow_nr_1_arg_match(__NR_fcntl, 2, F_SETLK);
-  }
-  if (tunable_async_abor_enable)
-  {
-    allow_nr_2_arg_match(__NR_fcntl, 2, F_SETOWN, 3, vsf_sysutil_getpid());
-  }
-  allow_nr_2_arg_match(__NR_setsockopt, 2, SOL_SOCKET, 3, SO_KEEPALIVE);
-  allow_nr_2_arg_match(__NR_setsockopt, 2, SOL_SOCKET, 3, SO_LINGER);
-  allow_nr_2_arg_match(__NR_setsockopt, 2, IPPROTO_IP, 3, IP_TOS);
-  allow_nr(__NR_fstat);
-  allow_nr(__NR_lseek);
-  /* Since we use chroot() to restrict filesystem access, we can just blanket
-   * allow open().
-   */
-  allow_nr_1_arg_mask(__NR_open, 2, open_flag);
-  allow_nr_1_arg_mask(__NR_openat, 3, open_flag);
-  /* Other pathname-based metadata queries. */
-  allow_nr(__NR_stat);
-  allow_nr(__NR_readlink);
-  /* Directory handling: query, change, read. */
-  allow_nr(__NR_getcwd);
-  allow_nr(__NR_chdir);
-  allow_nr(__NR_getdents);
-  /* Misc */
-  allow_nr(__NR_umask);
-
-  /* Config-dependent items follow. */
-  if (tunable_use_sendfile)
-  {
-    allow_nr(__NR_sendfile);
-  }
-  if (tunable_idle_session_timeout > 0 ||
-      tunable_data_connection_timeout > 0 ||
-      tunable_async_abor_enable)
-  {
-    allow_nr(__NR_rt_sigaction);
-  }
-  if (tunable_idle_session_timeout > 0 || tunable_data_connection_timeout > 0)
-  {
-    allow_nr(__NR_alarm);
-  }
-
-  if (tunable_one_process_model)
-  {
-    sandbox_setup_data_connections();
-    if (is_anon && tunable_chown_uploads)
-    {
-      allow_nr(__NR_fchmod);
-      allow_nr(__NR_fchown);
-    }
-  }
-  else
-  {
-    /* Need to receieve file descriptors from privileged broker. */
-    allow_nr_1_arg_match(__NR_recvmsg, 3, 0);
-    if ((is_anon && tunable_chown_uploads) || tunable_ssl_enable)
-    {
-      /* Need to send file descriptors to privileged broker. */
-      allow_nr_1_arg_match(__NR_sendmsg, 3, 0);
-    }
-  }
-
-  if (tunable_text_userdb_names)
-  {
-    reject_nr(__NR_socket, EACCES);
-    allow_nr_2_arg_match(__NR_mmap, 3, PROT_READ, 4, MAP_SHARED);
-  }
-
-  if (tunable_write_enable)
-  {
-    if (!is_anon || tunable_anon_mkdir_write_enable)
-    {
-      allow_nr(__NR_mkdir);
-    }
-    if (!is_anon ||
-        tunable_anon_other_write_enable ||
-        tunable_delete_failed_uploads)
-    {
-      allow_nr(__NR_unlink);
-    }
-    if (!is_anon || tunable_anon_other_write_enable)
-    {
-      allow_nr(__NR_rmdir);
-      allow_nr(__NR_rename);
-      allow_nr(__NR_ftruncate);
-      if (tunable_mdtm_write)
-      {
-        allow_nr(__NR_utime);
-        allow_nr(__NR_utimes);
-      }
-    }
-    if (!is_anon && tunable_chmod_enable)
-    {
-      allow_nr(__NR_chmod);
-    }
-  }
+  return;
 }
 
 void
@@ -600,11 +449,6 @@ sandbox_lockdown()
       return;
     }
     die("prctl PR_SET_NO_NEW_PRIVS");
-  }
-
-  if (!tunable_seccomp_sandbox)
-  {
-    return;
   }
 
   ret = prctl(PR_SET_SECCOMP, 2, &prog, 0, 0);
