@@ -290,6 +290,16 @@ sandbox_setup()
   sandbox_setup_base();
   sandbox_setup_data_connections();
 
+  /* Misc simple low-risk calls */
+  allow_nr(__NR_nanosleep); /* Used for bandwidth / login throttling. */
+  allow_nr(__NR_getpid); /* Used by logging. */
+  allow_nr(__NR_shutdown); /* Used for QUIT or a timeout. */
+  allow_nr_1_arg_match(__NR_fcntl, 2, F_GETFL);
+  /* It's safe to allow O_RDWR in fcntl because these flags cannot be changed.
+   * Also, sockets are O_RDWR.
+   */
+  allow_nr_2_arg_mask_match(__NR_fcntl, 3, kOpenFlags|O_ACCMODE, 2, F_SETFL);
+
   return;
 }
 
