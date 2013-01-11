@@ -18,7 +18,9 @@ void die(const char* p_text);
  * the reason this happened down the network in FTP response format.
  * PARAMETERS
  * p_text       - text string describing what bug trap has triggered
- *       */
+ */
 void bug(const char* p_text);
+
+void print_trace(void);
 
 #endif
