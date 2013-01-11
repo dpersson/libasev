@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <unistd.h>
+
 #include "picoev.h"
 #include "sandbox.h"
 
@@ -29,8 +30,18 @@ setup_sock(int fd)
 {
   int on = 1, r;
 
-  r = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
-  assert(r == 0);
+  /* Try to use TCP Fast Open */
+  /* The qlen value specifies this server's limit on the size of the 
+   * queue of TFO requests that have not yet completed the three-way handshake 
+   */
+  int qlen = 5;
+  r = setsockopt(fd, SOL_TCP, TCP_FASTOPEN, &qlen, sizeof(qlen));
+  if(r != 0)
+  {
+    r = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
+    assert(r == 0);
+  }
+
   set_nonblock(fd);
 }
 
