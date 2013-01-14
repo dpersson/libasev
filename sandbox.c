@@ -2,19 +2,14 @@
 
 #include "sysutil.h"
 #include "utility.h"
-
 #include <errno.h>
-
 #include <netinet/in.h>
-
 #include <sys/fcntl.h>
 #include <sys/mman.h>
 #include <sys/prctl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-
 #include <linux/filter.h>
-
 #include <asm/unistd.h>
 
 #ifndef PR_SET_SECCOMP
