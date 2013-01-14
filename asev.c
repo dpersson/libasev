@@ -141,7 +141,8 @@ main(void)
   /* loop */
   while (1)
   {
-    fputc('.', stdout); fflush(stdout);
+    fputc('.', stdout);
+    fflush(stdout);
     picoev_loop_once(loop, 10);
   }
   /* cleanup */
