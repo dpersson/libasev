@@ -6,7 +6,8 @@ CFLAGS	=	-O2 -fPIE -fstack-protector --param=ssp-buffer-size=4 \
 LINK	=	-Wl,-s
 LDFLAGS	=	-fPIE -pie -Wl,-z,relro -Wl,-z,now
 
-OBJS	=	asev.o utility.o sandbox.o picoev_epoll.o sysutil.o str.o
+OBJS	=	asev.o utility.o sandbox.o picoev_epoll.o sysutil.o \
+			str.o http_parser.o
 
 .c.o:
 	$(CC) -c $*.c $(CFLAGS)
