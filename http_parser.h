@@ -18,11 +18,8 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-#ifndef http_parser_h
-#define http_parser_h
-#ifdef __cplusplus
-extern "C" {
-#endif
+#ifndef ASEV_HTTP_PARSER_H
+#define ASEV_HTTP_PARSER_H
 
 #define HTTP_PARSER_VERSION_MAJOR 2
 #define HTTP_PARSER_VERSION_MINOR 0
@@ -285,7 +282,4 @@ void http_parser_pause(http_parser *parser, int paused);
 /* Checks if this is the final chunk of the body. */
 int http_body_is_final(const http_parser *parser);
 
-#ifdef __cplusplus
-}
-#endif
 #endif

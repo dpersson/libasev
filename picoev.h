@@ -30,12 +30,7 @@
 #ifndef picoev_h
 #define picoev_h
 
-#ifdef __cplusplus
-extern "C" {
-# define PICOEV_INLINE inline
-#else
-# define PICOEV_INLINE static __inline__
-#endif
+#define PICOEV_INLINE static __inline__
 
 #include <assert.h>
 #include <limits.h>
@@ -333,8 +328,7 @@ extern "C" {
     if ((loop->timeout.vec_of_vec = (short*)picoev_memalign((picoev.timeout_vec_of_vec_size
 				    + picoev.timeout_vec_size)
 				   * sizeof(short) * PICOEV_TIMEOUT_VEC_SIZE,
-				   &loop->timeout._free_addr, 1))
-	== NULL)
+				   &loop->timeout._free_addr, 1))	== NULL)
     {
       --picoev.num_loops;
       return -1;
@@ -419,9 +413,5 @@ extern "C" {
   }
   
 #undef PICOEV_INLINE
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
